@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class StateChangeLogic {
     private final Collection<String> doneKeywords;
+    private final LogDone logDone;
 
     private String state;
 
@@ -23,7 +24,12 @@ public class StateChangeLogic {
     private boolean shifted = false;
 
     public StateChangeLogic(Collection<String> doneKeywords) {
+        this(doneKeywords, LogDone.TIME);
+    }
+
+    public StateChangeLogic(Collection<String> doneKeywords, LogDone logDone) {
         this.doneKeywords = doneKeywords;
+        this.logDone = logDone;
     }
 
     public void setState(
@@ -85,7 +91,7 @@ public class StateChangeLogic {
                 } else {
                     /* Set state and closed time. */
                     state = targetState;
-                    closed = new OrgRange(new OrgDateTime(false));
+                    closed = closedTime();
                 }
 
             } else { // done -> done
@@ -93,7 +99,7 @@ public class StateChangeLogic {
                  * Set the state and update the closed time.
                  */
                 state = targetState;
-                closed = new OrgRange(new OrgDateTime(false));
+                closed = closedTime();
             }
 
         } else { // -> to-do
@@ -103,6 +109,10 @@ public class StateChangeLogic {
             state = targetState;
             closed = null;
         }
+    }
+
+    private OrgRange closedTime() {
+        return logDone == LogDone.NONE ? null : new OrgRange(new OrgDateTime(false));
     }
 
     public String getState() {
