@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.regex.Matcher;
 
@@ -66,9 +67,10 @@ public class OrgFileSettings {
     }
 
     public List<String> getKeywordValues(String keyword) {
-        if (!otherKeywords.containsKey(keyword))
+        String key = normalized(keyword);
+        if (!otherKeywords.containsKey(key))
             return null;
-        return otherKeywords.get(keyword);
+        return otherKeywords.get(key);
     }
 
     public String getLastKeywordValue(String keyword) {
@@ -102,16 +104,22 @@ public class OrgFileSettings {
         return tags;
     }
 
+    /** In-buffer keyword names are case-insensitive, so store and look them up in one case. */
+    private static String normalized(String keyword) {
+        return keyword.toUpperCase(Locale.ROOT);
+    }
+
     private void addKeywordSetting(String keyword, String value) {
         if (keyword.equalsIgnoreCase(TITLE)) {
             title = value;
 
         } else {
-            if (!otherKeywords.containsKey(keyword)) {
-                otherKeywords.put(keyword, new ArrayList<>());
+            String key = normalized(keyword);
+            if (!otherKeywords.containsKey(key)) {
+                otherKeywords.put(key, new ArrayList<>());
             }
             if (!value.isEmpty()) {
-                otherKeywords.get(keyword).add(value);
+                otherKeywords.get(key).add(value);
             }
         }
     }
