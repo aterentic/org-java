@@ -1,6 +1,8 @@
 package com.orgzly.org.parser;
 
 import com.orgzly.org.OrgFile;
+import com.orgzly.org.OrgFileSettings;
+import com.orgzly.org.OrgStatesWorkflow;
 import com.orgzly.org.OrgHead;
 import com.orgzly.org.OrgPatterns;
 import com.orgzly.org.OrgStringUtils;
@@ -9,7 +11,9 @@ import com.orgzly.org.datetime.OrgRange;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +35,39 @@ class OrgSaxyParser extends OrgParser {
         this.listener = listener;
 
         this.statePattern = buildStatePattern(settings.todoKeywords, settings.doneKeywords);
+    }
+
+    /** Org reads keywords from any of these, and a file may use more than one. */
+    private static final List<String> WORKFLOW_KEYWORDS =
+            Arrays.asList("TODO", "SEQ_TODO", "TYP_TODO");
+
+    /**
+     * Replaces the keywords used for the rest of this file with the ones it declares.
+     *
+     * In-buffer settings apply to the file that carries them, so a heading is read with its own
+     * file's states rather than the caller's. A file declaring nothing keeps the caller's.
+     */
+    private void useWorkflowFromFile(OrgFileSettings fileSettings) {
+        Set<String> todoKeywords = new HashSet<>();
+        Set<String> doneKeywords = new HashSet<>();
+
+        for (String keyword: WORKFLOW_KEYWORDS) {
+            List<String> values = fileSettings.getKeywordValues(keyword);
+
+            if (values == null) {
+                continue;
+            }
+
+            for (String value: values) {
+                OrgStatesWorkflow workflow = new OrgStatesWorkflow(value);
+                todoKeywords.addAll(workflow.getTodoKeywords());
+                doneKeywords.addAll(workflow.getDoneKeywords());
+            }
+        }
+
+        if (!todoKeywords.isEmpty() || !doneKeywords.isEmpty()) {
+            statePattern = buildStatePattern(todoKeywords, doneKeywords);
+        }
     }
 
     /**
@@ -83,6 +120,9 @@ class OrgSaxyParser extends OrgParser {
             /* Search for in-buffer setting if headings are not yet encountered. */
             if (currentElement == null) {
                 if (orgFile.getSettings().parseLine(line)) {
+                    /* A file declaring its own workflow uses it for its own headings. */
+                    useWorkflowFromFile(orgFile.getSettings());
+
                     /* Belongs to file. */
                     preface.append(line);
                     preface.append('\n');
